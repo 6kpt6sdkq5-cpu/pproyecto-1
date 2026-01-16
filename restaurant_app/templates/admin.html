@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Menú Diario</title>
+    
+    <!-- PWA / Mobile Compatibility -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#FF5722">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>⚙️ Gestión de Menú</h1>
+        <div class="header-actions">
+            <a href="/" class="btn-small">Volver</a>
+            <a href="/logout" class="btn-small btn-danger">Cerrar Sesión</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="form-section">
+            <h2>Agregar Nuevo Plato</h2>
+            <form action="/api/add_item" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Nombre del Plato:</label>
+                    <input type="text" name="name" required placeholder="Ej: Arroz con Pollo">
+                </div>
+                <div class="form-group">
+                    <label>Precio (S/):</label>
+                    <input type="number" step="0.50" name="price" required placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label>Categoría:</label>
+                    <select name="category">
+                        <option value="Platos Fuertes">Platos Fuertes</option>
+                        <option value="Entradas">Entradas</option>
+                        <option value="Bebidas">Bebidas</option>
+                        <option value="Postres">Postres</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Imagen (opcional):</label>
+                    <input type="file" name="imagen" accept="image/*">
+                </div>
+                <button type="submit" class="btn-primary">Agregar al Menú</button>
+            </form>
+        </div>
+
+        <div class="yape-admin-section">
+            <h2>📱 Comprobantes Yape</h2>
+            <button class="btn-secondary" onclick="descargarComprobantes()">Descargar Comprobantes del Día (ZIP)</button>
+            <div id="download-status"></div>
+        </div>
+
+        <div class="users-section">
+            <h2>👥 Gestión de Usuarios</h2>
+            <div class="users-grid" id="users-grid">
+                <!-- Los usuarios se cargarán dinámicamente -->
+            </div>
+        </div>
+
+        <div class="yape-validation-section">
+            <h2>✅ Validar Pagos Yape</h2>
+            <div id="comprobantes-pendientes">
+                <!-- Los comprobantes pendientes se cargarán dinámicamente -->
+            </div>
+        </div>
+
+        <div class="yape-management-section">
+            <h2>📱 Gestión Completa de Comprobantes</h2>
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                <button class="btn-secondary" onclick="cargarTodosComprobantes()">Ver Todos</button>
+                <button class="btn-secondary" onclick="cargarComprobantesValidados()">Ver Validados</button>
+                <button class="btn-secondary" onclick="cargarComprobantesRechazados()">Ver Rechazados</button>
+                <button class="btn-primary" onclick="descargarTodosComprobantes()">Descargar Todos</button>
+            </div>
+            <div id="comprobantes-admin"></div>
+        </div>
+
+        <div class="list-section">
+            <h2>Items Actuales</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Imagen</th>
+                        <th>Nombre</th>
+                        <th>Precio</th>
+                        <th>Categoría</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for id, item in menu.items() %}
+                    <tr>
+                        <td>
+                            {% if item.imagen %}
+                                <img src="{{ url_for('static', filename='menu_images/' + item.imagen) }}" alt="{{ item.name }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                            {% else %}
+                                <div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666;">Sin imagen</div>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.name }}</td>
+                        <td>S/ {{ "%.2f"|format(item.price) }}</td>
+                        <td>{{ item.category }}</td>
+                        <td>
+                            <form action="/api/delete_item/{{ id }}" method="POST" style="display:inline;">
+                                <button type="submit" class="btn-danger">X</button>
+                            </form>
+                            <button onclick="agregarImagen('{{ id }}')" class="btn-primary" style="margin-left: 5px; padding: 0.2rem 0.5rem; font-size: 0.8rem;">📷</button>
+                            {% if item.imagen %}
+                                <button onclick="eliminarImagen('{{ id }}', '{{ item.imagen }}')" class="btn-danger" style="margin-left: 5px; padding: 0.2rem 0.5rem; font-size: 0.8rem;">🗑️</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal para agregar imagen -->
+        <div id="modal-imagen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+            <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 400px; margin: 100px auto;">
+                <h3>Agregar Imagen al Plato</h3>
+                <form id="form-imagen" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label>Seleccionar Imagen:</label>
+                        <input type="file" name="imagen" accept="image/*" required>
+                    </div>
+                    <input type="hidden" id="item-id-imagen" name="item_id">
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button type="submit" class="btn-primary">Subir Imagen</button>
+                        <button type="button" onclick="cerrarModalImagen()" class="btn-secondary">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        async function descargarComprobantes() {
+            const statusDiv = document.getElementById('download-status');
+            
+            try {
+                const response = await fetch('/api/descargar_comprobantes');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<p style="color: green;">✅ Preparando descarga...</p>';
+                    // Iniciar descarga del archivo ZIP
+                    window.location.href = result.descargar_url;
+                } else {
+                    statusDiv.innerHTML = `<p class="error">❌ Error: ${result.error}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<p class="error">❌ Error al preparar la descarga</p>';
+            }
+        }
+
+        // Cargar usuarios al iniciar
+        async function cargarUsuarios() {
+            try {
+                const response = await fetch('/api/usuarios');
+                const usuarios = await response.json();
+                
+                const usersGrid = document.getElementById('users-grid');
+                usersGrid.innerHTML = '';
+                
+                usuarios.forEach(usuario => {
+                    const userCard = document.createElement('div');
+                    userCard.className = 'user-card';
+                    userCard.innerHTML = `
+                        <h4>${usuario.nombre}</h4>
+                        <p><strong>Usuario:</strong> ${usuario.username}</p>
+                        <p><strong>Rol:</strong> ${usuario.rol}</p>
+                        <p><strong>Estado:</strong> ${usuario.activo ? 'Activo' : 'Inactivo'}</p>
+                        <button onclick="toggleUsuario('${usuario.username}')" class="btn-${usuario.activo ? 'danger' : 'primary'}">
+                            ${usuario.activo ? 'Desactivar' : 'Activar'}
+                        </button>
+                    `;
+                    usersGrid.appendChild(userCard);
+                });
+            } catch (error) {
+                console.error('Error al cargar usuarios:', error);
+            }
+        }
+
+        // Cargar comprobantes pendientes
+        async function cargarComprobantesPendientes() {
+            try {
+                const response = await fetch('/api/comprobantes_pendientes');
+                const comprobantes = await response.json();
+                
+                const container = document.getElementById('comprobantes-pendientes');
+                container.innerHTML = '';
+                
+                if (comprobantes.length === 0) {
+                    container.innerHTML = '<p>No hay comprobantes pendientes de validación</p>';
+                    return;
+                }
+                
+                comprobantes.forEach(comprobante => {
+                    const comprobanteDiv = document.createElement('div');
+                    comprobanteDiv.className = 'comprobante-pendiente';
+                    comprobanteDiv.innerHTML = `
+                        <div class="comprobante-info">
+                            <p><strong>Mesero:</strong> ${comprobante.mesero_nombre}</p>
+                            <p><strong>Fecha:</strong> ${comprobante.fecha}</p>
+                            <p><strong>Hora:</strong> ${comprobante.hora}</p>
+                            <p><strong>Monto:</strong> S/ ${comprobante.monto}</p>
+                        </div>
+                        <div class="comprobante-actions">
+                            <button onclick="verComprobante('${comprobante.filename}')" class="btn-primary">Ver</button>
+                            <button onclick="validarComprobante('${comprobante.filename}')" class="btn-success">Validar</button>
+                            <button onclick="rechazarComprobante('${comprobante.filename}')" class="btn-danger">Rechazar</button>
+                        </div>
+                    `;
+                    container.appendChild(comprobanteDiv);
+                });
+            } catch (error) {
+                console.error('Error al cargar comprobantes pendientes:', error);
+            }
+        }
+
+        // Ver comprobante
+        function verComprobante(filename) {
+            window.open(`/api/ver_comprobante/${filename}`, '_blank');
+        }
+
+        // Validar comprobante
+        async function validarComprobante(filename) {
+            const numeroOperacion = prompt('Ingrese el número de operación:');
+            if (!numeroOperacion) return;
+            
+            const codigoSeguridad = prompt('Ingrese el código de seguridad:');
+            if (!codigoSeguridad) return;
+            
+            const monto = prompt('Ingrese el monto del pago:');
+            if (!monto) return;
+            
+            try {
+                const response = await fetch('/api/validar_pago', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        filename: filename,
+                        numero_operacion: numeroOperacion,
+                        codigo_seguridad: codigoSeguridad,
+                        monto: parseFloat(monto)
+                    })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    alert('✅ Comprobante validado exitosamente');
+                    cargarComprobantesPendientes();
+                    cargarTodosComprobantes(); // Recargar vista completa
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('❌ Error al validar comprobante');
+            }
+        }
+
+        // Rechazar comprobante
+        async function rechazarComprobante(filename) {
+            if (!confirm('¿Está seguro de rechazar este comprobante?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/rechazar_comprobante', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        filename: filename
+                    })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    alert('✅ Comprobante rechazado');
+                    cargarComprobantesPendientes();
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('❌ Error al rechazar comprobante');
+            }
+        }
+
+        // Toggle usuario activo/inactivo
+        async function toggleUsuario(username) {
+            try {
+                const response = await fetch('/api/toggle_usuario', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username
+                    })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    cargarUsuarios();
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('❌ Error al cambiar estado de usuario');
+            }
+        }
+
+        // Funciones para gestión de imágenes
+        function agregarImagen(itemId) {
+            document.getElementById('item-id-imagen').value = itemId;
+            document.getElementById('modal-imagen').style.display = 'block';
+        }
+
+        function cerrarModalImagen() {
+            document.getElementById('modal-imagen').style.display = 'none';
+            document.getElementById('form-imagen').reset();
+        }
+
+        // Función para eliminar imagen
+        async function eliminarImagen(itemId, imagenNombre) {
+            if (!confirm('¿Está seguro de eliminar esta imagen?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/eliminar_imagen_menu', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        item_id: itemId,
+                        imagen_nombre: imagenNombre
+                    })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    alert('✅ Imagen eliminada exitosamente');
+                    location.reload();
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('❌ Error al eliminar imagen');
+            }
+        }
+
+        // Manejar envío del formulario de imagen
+        document.getElementById('form-imagen').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const imagenFile = e.target.imagen.files[0];
+            const itemId = document.getElementById('item-id-imagen').value;
+            
+            if (!imagenFile) {
+                alert('Por favor seleccione una imagen');
+                return;
+            }
+            
+            formData.append('imagen', imagenFile);
+            formData.append('item_id', itemId);
+            
+            try {
+                const response = await fetch('/api/subir_imagen_menu', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    alert('✅ Imagen subida exitosamente');
+                    cerrarModalImagen();
+                    location.reload(); // Recargar para ver la imagen
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('❌ Error al subir imagen');
+            }
+        });
+
+        // Cargar todos los comprobantes
+        async function cargarTodosComprobantes() {
+            try {
+                const response = await fetch('/api/todos_comprobantes');
+                const comprobantes = await response.json();
+                mostrarComprobantesAdmin(comprobantes, 'Todos los Comprobantes');
+            } catch (error) {
+                console.error('Error al cargar todos los comprobantes:', error);
+            }
+        }
+
+        // Cargar comprobantes validados
+        async function cargarComprobantesValidados() {
+            try {
+                const response = await fetch('/api/todos_comprobantes');
+                const todos = await response.json();
+                const validados = todos.filter(comp => comp.estado === 'validado');
+                mostrarComprobantesAdmin(validados, 'Comprobantes Validados');
+            } catch (error) {
+                console.error('Error al cargar comprobantes validados:', error);
+            }
+        }
+
+        // Cargar comprobantes rechazados
+        async function cargarComprobantesRechazados() {
+            try {
+                const response = await fetch('/api/todos_comprobantes');
+                const todos = await response.json();
+                const rechazados = todos.filter(comp => comp.estado === 'rechazado');
+                mostrarComprobantesAdmin(rechazados, 'Comprobantes Rechazados');
+            } catch (error) {
+                console.error('Error al cargar comprobantes rechazados:', error);
+            }
+        }
+
+        // Mostrar comprobantes en el panel de admin
+        function mostrarComprobantesAdmin(comprobantes, titulo) {
+            const container = document.getElementById('comprobantes-admin');
+            container.innerHTML = `<h3>${titulo} (${comprobantes.length})</h3>`;
+            
+            if (comprobantes.length === 0) {
+                container.innerHTML += '<p>No hay comprobantes para mostrar</p>';
+                return;
+            }
+            
+            comprobantes.forEach(comprobante => {
+                const comprobanteDiv = document.createElement('div');
+                comprobanteDiv.className = 'comprobante-admin-item';
+                comprobanteDiv.innerHTML = `
+                    <div class="comprobante-info">
+                        <p><strong>Mesero:</strong> ${comprobante.mesero_nombre}</p>
+                        <p><strong>Fecha:</strong> ${comprobante.fecha} ${comprobante.hora}</p>
+                        <p><strong>Estado:</strong> <span class="estado-${comprobante.estado}">${comprobante.estado}</span></p>
+                        ${comprobante.validado_por ? `<p><strong>Validado por:</strong> ${comprobante.validado_por}</p>` : ''}
+                        ${comprobante.numero_operacion ? `<p><strong>N° Operación:</strong> ${comprobante.numero_operacion}</p>` : ''}
+                        ${comprobante.codigo_seguridad ? `<p><strong>Código:</strong> ${comprobante.codigo_seguridad}</p>` : ''}
+                        ${comprobante.monto ? `<p><strong>Monto:</strong> S/ ${comprobante.monto}</p>` : ''}
+                    </div>
+                    <div class="comprobante-actions">
+                        <button onclick="verComprobante('${comprobante.filename}')" class="btn-primary">Ver</button>
+                        ${comprobante.estado === 'pendiente' ? `
+                            <button onclick="validarComprobante('${comprobante.filename}')" class="btn-success">Validar</button>
+                            <button onclick="rechazarComprobante('${comprobante.filename}')" class="btn-danger">Rechazar</button>
+                        ` : ''}
+                    </div>
+                `;
+                container.appendChild(comprobanteDiv);
+            });
+        }
+
+        // Descargar todos los comprobantes
+        async function descargarTodosComprobantes() {
+            try {
+                const response = await fetch('/api/descargar_todos_comprobantes');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ Descargando todos los comprobantes...');
+                    window.location.href = result.descargar_url;
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('❌ Error al descargar comprobantes');
+            }
+        }
+
+        // Cargar datos al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarUsuarios();
+            cargarComprobantesPendientes();
+            cargarTodosComprobantes(); // Cargar todos por defecto
+        });
+    </script>
+</body>
+</html>

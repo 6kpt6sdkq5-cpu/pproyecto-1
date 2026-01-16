@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurante POS</title>
+    
+    <!-- PWA / Mobile Compatibility -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#FF5722">
+    
+    <!-- iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Restaurante">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3448/3448609.png">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>🍽️ Restaurante</h1>
+        <a href="/admin" class="btn-small">Admin</a>
+    </header>
+
+    <div class="container">
+        <div class="menu-section">
+            <h2>Menú del Día</h2>
+            <div id="menu-list">
+                {% for id, item in menu.items() %}
+                <div class="menu-item" onclick="addToCart({{ id }}, '{{ item.name }}', {{ item.price }})">
+                    <div class="item-info">
+                        <span class="item-name">{{ item.name }}</span>
+                        <span class="item-cat">{{ item.category }}</span>
+                    </div>
+                    <div class="item-price">S/ {{ "%.2f"|format(item.price) }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="cart-section">
+            <h2>🛒 Cuenta</h2>
+            <div id="cart-items">
+                <p class="empty-msg">No hay items seleccionados</p>
+            </div>
+            <div class="cart-total">
+                <span>Total:</span>
+                <span id="total-amount">S/ 0.00</span>
+            </div>
+            <button class="btn-primary" onclick="processPayment()">Cobrar / Cerrar Mesa</button>
+            <button class="btn-secondary" onclick="clearCart()">Limpiar</button>
+            
+            <div class="yape-section">
+                <h3>📱 Pago con Yape</h3>
+                <p>Sube el comprobante de tu pago Yape (se valida automáticamente):</p>
+                <input type="file" id="yape-file" accept="image/*" class="file-input">
+                <button class="btn-secondary" onclick="uploadComprobante()">Subir Comprobante</button>
+                <div id="upload-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cart = {};
+
+        function addToCart(id, name, price) {
+            if (cart[id]) {
+                cart[id]++;
+            } else {
+                cart[id] = 1;
+            }
+            updateCartDisplay();
+        }
+
+        function removeFromCart(id) {
+            if (cart[id]) {
+                cart[id]--;
+                if (cart[id] <= 0) {
+                    delete cart[id];
+                }
+            }
+            updateCartDisplay();
+        }
+
+        function clearCart() {
+            cart = {};
+            updateCartDisplay();
+        }
+
+        async function updateCartDisplay() {
+            const cartDiv = document.getElementById('cart-items');
+            
+            if (Object.keys(cart).length === 0) {
+                cartDiv.innerHTML = '<p class="empty-msg">No hay items seleccionados</p>';
+                document.getElementById('total-amount').innerText = 'S/ 0.00';
+                return;
+            }
+
+            // Calculate total via API or local (API is safer for sync)
+            const response = await fetch('/api/calculate_bill', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({items: cart})
+            });
+            const data = await response.json();
+
+            cartDiv.innerHTML = '';
+            data.details.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'cart-item';
+                div.innerHTML = `
+                    <span>${item.name} (x${item.quantity})</span>
+                    <span>S/ ${item.total.toFixed(2)}</span>
+                `;
+                cartDiv.appendChild(div);
+            });
+
+            document.getElementById('total-amount').innerText = 'S/ ' + data.total.toFixed(2);
+        }
+
+        function processPayment() {
+            if (Object.keys(cart).length === 0) return alert("La cuenta está vacía");
+            if (confirm("¿Confirmar cobro y cerrar mesa?")) {
+                alert("Cuenta pagada correctamente.");
+                clearCart();
+            }
+        }
+
+        async function uploadComprobante() {
+            const fileInput = document.getElementById('yape-file');
+            const statusDiv = document.getElementById('upload-status');
+            
+            if (!fileInput.files[0]) {
+                statusDiv.innerHTML = '<p class="error">Por favor selecciona una imagen</p>';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/api/upload_comprobante', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<p style="color: green;">✅ Comprobante subido y validado automáticamente</p>';
+                    fileInput.value = ''; // Limpiar input
+                } else {
+                    statusDiv.innerHTML = `<p class="error">❌ Error: ${result.error}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<p class="error">❌ Error al subir el comprobante</p>';
+            }
+        }
+    </script>
+</body>
+</html>

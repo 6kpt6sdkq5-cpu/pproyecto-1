@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: restaurant-app
+    env: python
+    rootDir: restaurant_app
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    autoDeploy: true

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Admin - Restaurante</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- PWA / Mobile Compatibility -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#FF5722">
+    <!-- iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Restaurante">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3448/3448609.png">
+</head>
+<body>
+    <div class="login-container">
+        <h1>🔐 Login Restaurante</h1>
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <label for="username">Usuario:</label>
+                <input type="text" id="username" name="username" required placeholder="Ej: mesero1, gerente1, admin">
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn-primary">Ingresar</button>
+        </form>
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+        <div style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+            <p><strong>Usuarios de prueba:</strong></p>
+            <p>Meseros: mesero1-mesero8 (pass: mesero123)</p>
+            <p>Gerentes: gerente1-gerente2 (pass: gerente123)</p>
+            <p>Admin: admin (pass: 1234)</p>
+        </div>
+    </div>
+</body>
+</html>

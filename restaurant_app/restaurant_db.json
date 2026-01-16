@@ -1,0 +1,32 @@
+{
+    "menu": {
+        "1": {
+            "name": "Lomo Saltado",
+            "price": 25.0,
+            "category": "Platos Fuertes"
+        },
+        "2": {
+            "name": "Ceviche Mixto",
+            "price": 30.0,
+            "category": "Platos Fuertes"
+        },
+        "3": {
+            "name": "Inka Cola",
+            "price": 5.0,
+            "category": "Bebidas"
+        },
+        "4": {
+            "name": "Chicha Morada",
+            "price": 4.0,
+            "category": "Bebidas"
+        }
+    },
+    "orders": [],
+    "comprobantes": [
+        {
+            "filename": "yape_20260110_234203_WhatsApp_Image_2026-01-04_at_4.30.44_PM.jpeg",
+            "fecha": "2026-01-10T23:42:03.547921",
+            "ruta": "comprobantes_yape\\yape_20260110_234203_WhatsApp_Image_2026-01-04_at_4.30.44_PM.jpeg"
+        }
+    ]
+}

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Gerente - Restaurante</title>
+    
+    <!-- PWA / Mobile Compatibility -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#FF5722">
+    
+    <!-- iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Restaurante">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3448/3448609.png">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .gerente-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .gerente-section h2 {
+            color: #dc3545;
+            margin-bottom: 1rem;
+        }
+        
+        .validation-form {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .comprobante-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #007bff;
+        }
+        
+        .comprobante-item.validado {
+            border-left-color: #28a745;
+            background-color: #f8fff8;
+        }
+        
+        .comprobante-item.pendiente {
+            border-left-color: #ffc107;
+            background-color: #fffbf0;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        
+        .validation-status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .status-validado {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-pendiente {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>👔 Panel Gerente - {{ usuario }}</h1>
+        <div class="header-actions">
+            <span>Última actualización: <span id="ultima-actualizacion"></span></span>
+            <button onclick="actualizarDatos()" class="btn-small">🔄 Actualizar</button>
+            <a href="/logout" class="btn-small btn-danger">Cerrar Sesión</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="gerente-section">
+            <h2>📊 Resumen General del Día</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-comprobantes">0</div>
+                    <div>Total Comprobantes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="comprobantes-validados">0</div>
+                    <div>Comprobantes Validados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="porcentaje-validacion">0%</div>
+                    <div>Porcentaje Validación</div>
+                </div>
+            </div>
+            <button onclick="generarReporteCompleto()" class="btn-primary" style="margin-top: 1rem;">
+                📈 Generar Reporte Completo
+            </button>
+        </div>
+
+        <div class="gerente-section">
+            <h2>✅ Validación de Pagos Yape</h2>
+            <p>Comprobantes pendientes de validación:</p>
+            <div id="comprobantes-pendientes">
+                <p>Cargando comprobantes...</p>
+            </div>
+        </div>
+
+        <div class="gerente-section">
+            <h2>📋 Todos los Comprobantes</h2>
+            <div id="todos-comprobantes">
+                <p>Cargando comprobantes...</p>
+            </div>
+        </div>
+
+        <div class="gerente-section">
+            <h2>📦 Descarga Masiva</h2>
+            <p>Descargar todos los comprobantes del día en formato ZIP:</p>
+            <button onclick="descargarComprobantesZIP()" class="btn-secondary">
+                📥 Descargar ZIP
+            </button>
+            <div id="descarga-status"></div>
+        </div>
+    </div>
+
+    <script>
+        // Funciones del panel gerente
+        function actualizarDatos() {
+            document.getElementById('ultima-actualizacion').textContent = new Date().toLocaleTimeString('es-PE');
+            cargarResumenDiario();
+            cargarComprobantesPendientes();
+            cargarTodosComprobantes();
+        }
+
+        async function cargarResumenDiario() {
+            try {
+                const response = await fetch('/api/reporte_diario');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('total-comprobantes').textContent = data.total_comprobantes;
+                    document.getElementById('comprobantes-validados').textContent = data.comprobantes_validados;
+                    document.getElementById('porcentaje-validacion').textContent = 
+                        Math.round(data.porcentaje_validacion) + '%';
+                }
+            } catch (error) {
+                console.error('Error al cargar resumen:', error);
+            }
+        }
+
+        async function cargarComprobantesPendientes() {
+            try {
+                const response = await fetch('/api/comprobantes_pendientes');
+                const data = await response.json();
+                
+                const contenedor = document.getElementById('comprobantes-pendientes');
+                if (response.ok && data.comprobantes.length > 0) {
+                    contenedor.innerHTML = data.comprobantes.map(comp => `
+                        <div class="comprobante-item pendiente">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>Comprobante:</strong> ${comp.filename}<br>
+                                    <strong>Fecha:</strong> ${new Date(comp.fecha).toLocaleString('es-PE')}<br>
+                                    <strong>Estado:</strong> <span class="validation-status status-pendiente">PENDIENTE</span>
+                                </div>
+                                <div>
+                                    <button onclick="mostrarFormularioValidacion('${comp.filename}')" class="btn-primary">
+                                        Validar Pago
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="form-${comp.filename}" style="display: none; margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+                                <h4>Validar Pago</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                                    <input type="text" id="numero-${comp.filename}" placeholder="Número de operación" class="form-input">
+                                    <input type="text" id="codigo-${comp.filename}" placeholder="Código de seguridad" class="form-input">
+                                    <input type="number" id="monto-${comp.filename}" placeholder="Monto S/" class="form-input" step="0.01">
+                                </div>
+                                <div style="margin-top: 1rem;">
+                                    <button onclick="validarPago('${comp.filename}')" class="btn-success">
+                                        ✅ Confirmar Validación
+                                    </button>
+                                    <button onclick="cancelarValidacion('${comp.filename}')" class="btn-danger">
+                                        ❌ Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    contenedor.innerHTML = '<p style="color: #666;">No hay comprobantes pendientes de validación</p>';
+                }
+            } catch (error) {
+                console.error('Error al cargar comprobantes pendientes:', error);
+            }
+        }
+
+        async function cargarTodosComprobantes() {
+            try {
+                const response = await fetch('/api/todos_comprobantes');
+                const data = await response.json();
+                
+                const contenedor = document.getElementById('todos-comprobantes');
+                if (response.ok && data.comprobantes.length > 0) {
+                    contenedor.innerHTML = data.comprobantes.map(comp => `
+                        <div class="comprobante-item ${comp.validado ? 'validado' : 'pendiente'}">
+                            <strong>Comprobante:</strong> ${comp.filename}<br>
+                            <strong>Fecha:</strong> ${new Date(comp.fecha).toLocaleString('es-PE')}<br>
+                            <strong>Estado:</strong> 
+                            <span class="validation-status ${comp.validado ? 'status-validado' : 'status-pendiente'}">
+                                ${comp.validado ? 'VALIDADO' : 'PENDIENTE'}
+                            </span>
+                            ${comp.validado ? `<br><strong>Validado por:</strong> ${comp.validado_por}<br><strong>Fecha validación:</strong> ${new Date(comp.fecha_validacion).toLocaleString('es-PE')}` : ''}
+                        </div>
+                    `).join('');
+                } else {
+                    contenedor.innerHTML = '<p style="color: #666;">No hay comprobantes registrados hoy</p>';
+                }
+            } catch (error) {
+                console.error('Error al cargar todos los comprobantes:', error);
+            }
+        }
+
+        function mostrarFormularioValidacion(filename) {
+            document.getElementById(`form-${filename}`).style.display = 'block';
+        }
+
+        function cancelarValidacion(filename) {
+            document.getElementById(`form-${filename}`).style.display = 'none';
+            document.getElementById(`numero-${filename}`).value = '';
+            document.getElementById(`codigo-${filename}`).value = '';
+            document.getElementById(`monto-${filename}`).value = '';
+        }
+
+        async function validarPago(filename) {
+            const numeroOperacion = document.getElementById(`numero-${filename}`).value;
+            const codigoSeguridad = document.getElementById(`codigo-${filename}`).value;
+            const monto = document.getElementById(`monto-${filename}`).value;
+            
+            if (!numeroOperacion || !codigoSeguridad || !monto) {
+                alert('Por favor complete todos los campos');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/validar_pago', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        comprobante_id: filename,
+                        numero_operacion: numeroOperacion,
+                        codigo_seguridad: codigoSeguridad,
+                        monto: parseFloat(monto)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ Pago validado exitosamente');
+                    actualizarDatos(); // Recargar todos los datos
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('❌ Error al validar el pago');
+            }
+        }
+
+        async function descargarComprobantesZIP() {
+            const statusDiv = document.getElementById('descarga-status');
+            
+            try {
+                const response = await fetch('/api/descargar_comprobantes');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `
+                        <p style="color: green;">✅ ${result.message}</p>
+                        <a href="${result.descargar_url}" class="btn-success" download>
+                            📥 Descargar ZIP
+                        </a>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `<p style="color: red;">❌ Error: ${result.error}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<p style="color: red;">❌ Error al generar ZIP</p>';
+            }
+        }
+
+        function generarReporteCompleto() {
+            alert('📈 Generando reporte completo del día...');
+            // Aquí puedes agregar la lógica para generar un PDF o descargar el reporte completo
+        }
+
+        // Cargar datos al iniciar
+        actualizarDatos();
+        
+        // Actualizar cada 30 segundos
+        setInterval(actualizarDatos, 30000);
+    </script>
+</body>
+</html>

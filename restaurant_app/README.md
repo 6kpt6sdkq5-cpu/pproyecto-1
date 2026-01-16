@@ -1,0 +1,81 @@
+# Sistema de Gestión de Restaurante
+
+Una aplicación web completa para la gestión de un restaurante con sistema de usuarios y roles diferenciados, incluyendo manejo de comprobantes Yape.
+
+## Características
+
+### Sistema de Usuarios con Roles
+- **8 Meseros** (mesero1 - mesero8): Contraseña `mesero123`
+- **2 Gerentes** (gerente1 - gerente2): Contraseña `gerente123`
+- **1 Administrador** (admin): Contraseña `1234`
+
+### Funcionalidades por Rol
+
+#### Meseros
+- ✅ Subir fotos de comprobantes Yape
+- ✅ Ver reporte personal diario
+- ✅ Ver sus propios comprobantes subidos
+
+#### Gerentes
+- ✅ Validar pagos Yape con número de operación y código de seguridad
+- ✅ Ver todos los comprobantes del día
+- ✅ Descargar ZIP con todos los comprobantes
+- ✅ Generar reporte diario completo
+- ✅ Gestión de comprobantes (validar/rechazar)
+
+#### Administrador
+- ✅ Gestión completa del menú (agregar/eliminar platos)
+- ✅ Gestión de usuarios (activar/desactivar)
+- ✅ Validación de pagos Yape
+- ✅ Descarga de comprobantes
+- ✅ Reportes completos
+
+## Instalación
+
+1. Clonar o descargar el proyecto
+2. Instalar las dependencias:
+```bash
+pip install flask
+```
+
+3. Ejecutar la aplicación:
+```bash
+python app.py
+```
+
+4. Abrir el navegador en: `http://localhost:5000`
+
+## Uso
+
+### Login
+- Acceder a `http://localhost:5000/login`
+- Usar las credenciales según el rol deseado
+
+### Flujo de Trabajo
+
+1. **Meseros** suben comprobantes Yape desde su panel
+2. **Gerentes** validan los comprobantes con número de operación y código de seguridad
+3. **Administrador** gestiona el menú y usuarios
+
+### Estructura de Archivos
+```
+restaurant_app/
+├── app.py              # Aplicación principal Flask
+├── restaurant_db.json  # Base de datos JSON
+├── comprobantes_yape/  # Carpeta de comprobantes subidos
+├── static/             # Archivos estáticos (CSS, JS)
+├── templates/          # Plantillas HTML
+└── README.md          # Este archivo
+```
+
+## Seguridad
+- Sistema de autenticación por sesiones
+- Control de acceso basado en roles
+- Verificación de usuarios activos/inactivos
+- Validación de archivos subidos
+
+## Notas
+- La aplicación está en modo desarrollo
+- Los comprobantes se almacenan localmente
+- Se recomienda implementar respaldo de datos en producción
+- La validación bancaria es simulada en esta versión

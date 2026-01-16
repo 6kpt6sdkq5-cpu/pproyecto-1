@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Mesero - Restaurante</title>
+    
+    <!-- PWA / Mobile Compatibility -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#FF5722">
+    
+    <!-- iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Restaurante">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3448/3448609.png">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .mesero-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid #007bff;
+        }
+        
+        .mesero-section h2 {
+            color: #007bff;
+            margin-bottom: 1rem;
+        }
+        
+        .user-info {
+            background: #e3f2fd;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .report-section {
+            background: #fff3e0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .report-section h3 {
+            color: #ff9800;
+            margin-bottom: 1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🍽️ Panel Mesero</h1>
+        <div class="header-actions">
+            <span>Bienvenido, {{ usuario }}</span>
+            <a href="/" class="btn-small">Volver</a>
+            <a href="/logout" class="btn-small btn-danger">Cerrar Sesión</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="user-info">
+            <div>
+                <strong>Mesero:</strong> {{ usuario }}
+            </div>
+            <div>
+                <strong>Fecha:</strong> <span id="fecha-actual"></span>
+            </div>
+        </div>
+
+        <div class="mesero-section">
+            <h2>📱 Subir Comprobante Yape</h2>
+            <p>Selecciona la imagen del comprobante de pago Yape (se valida automáticamente):</p>
+            <input type="file" id="yape-file" accept="image/*" class="file-input">
+            <button class="btn-primary" onclick="uploadComprobante()">Subir Comprobante</button>
+            <div id="upload-status"></div>
+            
+            <div style="margin-top: 1rem;">
+                <h4>Últimos comprobantes subidos hoy:</h4>
+                <div id="mis-comprobantes"></div>
+            </div>
+        </div>
+
+        <div class="report-section">
+            <h3>📊 Mi Reporte Diario</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-comprobantes">0</div>
+                    <div>Comprobantes Hoy</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-ventas">S/ 0.00</div>
+                    <div>Ventas Registradas</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button class="btn-secondary" onclick="generarReportePersonal()">
+                    Generar Mi Reporte
+                </button>
+                <button class="btn-primary" onclick="descargarMisComprobantes()">
+                    📥 Descargar Mis Comprobantes
+                </button>
+                <button onclick="finalizarDia()" class="btn-success">🏁 Finalizar Mi Día</button>
+            </div>
+        </div>
+
+        <div class="mesero-section">
+            <h2>🛒 Gestión de Pedidos</h2>
+            <p>Accede al sistema de pedidos para registrar ventas:</p>
+            <a href="/" class="btn-primary">Ir a Pedidos</a>
+        </div>
+    </div>
+
+    <script>
+        // Actualizar fecha actual
+        document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-PE');
+
+        // Cargar comprobantes del mesero actual
+        function cargarMisComprobantes() {
+            fetch('/api/mis_comprobantes')
+                .then(response => response.json())
+                .then(data => {
+                    const contenedor = document.getElementById('mis-comprobantes');
+                    if (data.comprobantes && data.comprobantes.length > 0) {
+                        contenedor.innerHTML = data.comprobantes.map(comp => {
+                            const fecha = new Date(comp.fecha).toLocaleString('es-PE');
+                            return `
+                                <div style="background: white; padding: 0.5rem; margin: 0.5rem 0; border-radius: 4px; border-left: 3px solid #28a745;">
+                                    <strong>Comprobante:</strong> ${comp.filename}<br>
+                                    <strong>Fecha:</strong> ${fecha}
+                                </div>
+                            `;
+                        }).join('');
+                        document.getElementById('total-comprobantes').textContent = data.comprobantes.length;
+                    } else {
+                        contenedor.innerHTML = '<p style="color: #666;">No has subido comprobantes hoy</p>';
+                        document.getElementById('total-comprobantes').textContent = '0';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar comprobantes:', error);
+                });
+        }
+
+        // Subir comprobante
+        async function uploadComprobante() {
+            const fileInput = document.getElementById('yape-file');
+            const statusDiv = document.getElementById('upload-status');
+            
+            if (!fileInput.files[0]) {
+                statusDiv.innerHTML = '<p class="error">Por favor selecciona una imagen</p>';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/api/upload_comprobante', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<p style="color: green;">✅ Comprobante subido y validado automáticamente</p>';
+                    fileInput.value = '';
+                    cargarMisComprobantes(); // Recargar lista
+                } else {
+                    statusDiv.innerHTML = `<p class="error">❌ Error: ${result.error}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<p class="error">❌ Error al subir el comprobante</p>';
+            }
+        }
+
+        // Generar reporte personal
+        function generarReportePersonal() {
+            fetch('/api/reporte_personal')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.mesero) {
+                        const reporteHTML = `
+                            <div style="background: white; padding: 1rem; border-radius: 8px; margin-top: 1rem; border: 1px solid #28a745;">
+                                <h4>📊 Reporte Personal del Día</h4>
+                                <p><strong>Mesero:</strong> ${data.mesero}</p>
+                                <p><strong>Fecha:</strong> ${data.fecha}</p>
+                                <p><strong>Total Comprobantes:</strong> ${data.total_comprobantes}</p>
+                                <p><strong>Comprobantes Validados:</strong> ${data.comprobantes_validados}</p>
+                                <p><strong>Porcentaje de Validación:</strong> ${data.porcentaje_validacion.toFixed(1)}%</p>
+                                <hr>
+                                <p style="color: #666; font-size: 0.9rem;">Reporte generado exitosamente</p>
+                            </div>
+                        `;
+                        document.getElementById('report-status').innerHTML = reporteHTML;
+                    } else {
+                        alert(`Error: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    alert('Error al generar el reporte');
+                });
+        }
+
+        // Descargar mis comprobantes
+        async function descargarMisComprobantes() {
+            try {
+                const response = await fetch('/api/descargar_mis_comprobantes');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ Descargando tus comprobantes...');
+                    window.location.href = result.descargar_url;
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('❌ Error al descargar comprobantes');
+            }
+        }
+
+        // Finalizar día - Genera reporte y descarga comprobantes automáticamente
+        function finalizarDia() {
+            if (!confirm('¿Está seguro de finalizar su día? Esto generará su reporte y descargará todos sus comprobantes.')) {
+                return;
+            }
+
+            // Primero generar el reporte
+            fetch('/api/reporte_personal')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.mesero) {
+                        // Mostrar reporte
+                        const reporteHTML = `
+                            <div style="background: #d4edda; padding: 1rem; border-radius: 8px; margin-top: 1rem; border: 1px solid #c3e6cb;">
+                                <h4>🏁 DÍA FINALIZADO - Reporte Generado</h4>
+                                <p><strong>Mesero:</strong> ${data.mesero}</p>
+                                <p><strong>Fecha:</strong> ${data.fecha}</p>
+                                <p><strong>Total Comprobantes:</strong> ${data.total_comprobantes}</p>
+                                <p><strong>Comprobantes Validados:</strong> ${data.comprobantes_validados}</p>
+                                <p><strong>Porcentaje de Validación:</strong> ${data.porcentaje_validacion.toFixed(1)}%</p>
+                                <hr>
+                                <p style="color: #155724; font-weight: bold;">✅ Reporte generado exitosamente</p>
+                                <p style="color: #155724;">Descargando comprobantes...</p>
+                            </div>
+                        `;
+                        document.getElementById('report-status').innerHTML = reporteHTML;
+                        
+                        // Luego descargar comprobantes
+                        setTimeout(() => {
+                            fetch('/api/descargar_mis_comprobantes')
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        window.location.href = data.descargar_url;
+                                        setTimeout(() => {
+                                            alert('🎉 ¡Día finalizado con éxito! Su reporte y comprobantes han sido descargados.');
+                                        }, 2000);
+                                    } else {
+                                        alert('Reporte generado, pero hubo error al descargar comprobantes.');
+                                    }
+                                })
+                                .catch(error => {
+                                    alert('Reporte generado, pero error al descargar comprobantes.');
+                                });
+                        }, 1000);
+                        
+                    } else {
+                        alert(`Error al generar reporte: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    alert('Error al finalizar el día');
+                });
+        }
+
+        // Cargar comprobantes al iniciar
+        cargarMisComprobantes();
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Mesero - Restaurante</title>
+    
+    <!-- PWA / Mobile Compatibility -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#FF5722">
+    
+    <!-- iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Restaurante">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3448/3448609.png">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .mesero-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid #007bff;
+        }
+        
+        .mesero-section h2 {
+            color: #007bff;
+            margin-bottom: 1rem;
+        }
+        
+        .user-info {
+            background: #e3f2fd;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .report-section {
+            background: #fff3e0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .report-section h3 {
+            color: #ff9800;
+            margin-bottom: 1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🍽️ Panel Mesero</h1>
+        <div class="header-actions">
+            <span>Bienvenido, {{ usuario }}</span>
+            <a href="/logout" class="btn-small btn-danger">Cerrar Sesión</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="user-info">
+            <div>
+                <strong>Mesero:</strong> {{ usuario }}
+            </div>
+            <div>
+                <strong>Fecha:</strong> <span id="fecha-actual"></span>
+            </div>
+        </div>
+
+        <div class="mesero-section">
+            <h2>📱 Subir Comprobante Yape</h2>
+            <p>Selecciona la imagen del comprobante de pago Yape:</p>
+            <input type="file" id="yape-file" accept="image/*" class="file-input">
+            <button class="btn-primary" onclick="uploadComprobante()">Subir Comprobante</button>
+            <div id="upload-status"></div>
+            
+            <div style="margin-top: 1rem;">
+                <h4>Últimos comprobantes subidos hoy:</h4>
+                <div id="mis-comprobantes"></div>
+            </div>
+        </div>
+
+        <div class="report-section">
+            <h3>📊 Mi Reporte Diario</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-comprobantes">0</div>
+                    <div>Comprobantes Hoy</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-ventas">S/ 0.00</div>
+                    <div>Ventas Registradas</div>
+                </div>
+            </div>
+            <button class="btn-secondary" onclick="generarReportePersonal()" style="margin-top: 1rem;">
+                Generar Mi Reporte
+            </button>
+        </div>
+
+        <div class="mesero-section">
+            <h2>🛒 Gestión de Pedidos</h2>
+            <p>Accede al sistema de pedidos para registrar ventas:</p>
+            <a href="/" class="btn-primary">Ir a Pedidos</a>
+        </div>
+    </div>
+
+    <script>
+        // Actualizar fecha actual
+        document.getElementById('fecha-actual').textContent = new Date().toLocaleDateString('es-PE');
+
+        // Cargar comprobantes del mesero actual
+        function cargarMisComprobantes() {
+            fetch('/api/mis_comprobantes')
+                .then(response => response.json())
+                .then(data => {
+                    const contenedor = document.getElementById('mis-comprobantes');
+                    if (data.comprobantes && data.comprobantes.length > 0) {
+                        contenedor.innerHTML = data.comprobantes.map(comp => {
+                            const fecha = new Date(comp.fecha).toLocaleString('es-PE');
+                            return `
+                                <div style="background: white; padding: 0.5rem; margin: 0.5rem 0; border-radius: 4px; border-left: 3px solid #28a745;">
+                                    <strong>Comprobante:</strong> ${comp.filename}<br>
+                                    <strong>Fecha:</strong> ${fecha}
+                                </div>
+                            `;
+                        }).join('');
+                        document.getElementById('total-comprobantes').textContent = data.comprobantes.length;
+                    } else {
+                        contenedor.innerHTML = '<p style="color: #666;">No has subido comprobantes hoy</p>';
+                        document.getElementById('total-comprobantes').textContent = '0';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar comprobantes:', error);
+                });
+        }
+
+        // Subir comprobante
+        async function uploadComprobante() {
+            const fileInput = document.getElementById('yape-file');
+            const statusDiv = document.getElementById('upload-status');
+            
+            if (!fileInput.files[0]) {
+                statusDiv.innerHTML = '<p class="error">Por favor selecciona una imagen</p>';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/api/upload_comprobante', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<p style="color: green;">✅ Comprobante subido exitosamente</p>';
+                    fileInput.value = '';
+                    cargarMisComprobantes(); // Recargar lista
+                } else {
+                    statusDiv.innerHTML = `<p class="error">❌ Error: ${result.error}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<p class="error">❌ Error al subir el comprobante</p>';
+            }
+        }
+
+        // Generar reporte personal
+        function generarReportePersonal() {
+            alert('Reporte generado. Los datos se están procesando...');
+            // Aquí puedes agregar la lógica para generar un PDF o descargar el reporte
+        }
+
+        // Cargar comprobantes al iniciar
+        cargarMisComprobantes();
+    </script>
+</body>
+</html>
