@@ -103,6 +103,10 @@ def index():
     db = load_db()
     return render_template('index.html', menu=db.get('menu', {}))
 
+@app.route('/health')
+def health():
+    return jsonify({"status": "ok"}), 200
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
