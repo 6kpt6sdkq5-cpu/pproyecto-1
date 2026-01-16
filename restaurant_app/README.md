@@ -35,7 +35,7 @@ Una aplicación web completa para la gestión de un restaurante con sistema de u
 1. Clonar o descargar el proyecto
 2. Instalar las dependencias:
 ```bash
-pip install flask
+pip install -r requirements.txt
 ```
 
 3. Ejecutar la aplicación:
@@ -79,3 +79,15 @@ restaurant_app/
 - Los comprobantes se almacenan localmente
 - Se recomienda implementar respaldo de datos en producción
 - La validación bancaria es simulada en esta versión
+
+## Despliegue en Render
+
+1. Subir el proyecto a GitHub
+2. En Render, crear un Blueprint con este repositorio
+3. Variables de entorno:
+   - `SECRET_KEY`: clave de sesión
+   - `FLASK_DEBUG` opcional (`1` para debug)
+4. Render detecta:
+   - `rootDir`: `restaurant_app`
+   - Build: `pip install -r requirements.txt`
+   - Start: `gunicorn app:app`

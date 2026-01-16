@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+cloudflared.exe
+restaurant_app/comprobantes_yape/
+restaurant_app/restaurant_db.json

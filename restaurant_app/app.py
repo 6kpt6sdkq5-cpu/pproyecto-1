@@ -56,7 +56,7 @@ def obtener_todos_usuarios():
     return USUARIOS_PREDETERMINADOS
 
 app = Flask(__name__)
-app.secret_key = 'restaurante-secret-key-2024'
+app.secret_key = os.environ.get('SECRET_KEY', 'restaurante-secret-key-2024')
 
 # Archivo de Base de Datos
 DB_FILE = 'restaurant_db.json'
