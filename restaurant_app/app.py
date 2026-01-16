@@ -60,7 +60,7 @@ app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'), stati
 app.secret_key = os.environ.get('SECRET_KEY', 'restaurante-secret-key-2024')
 
 # Archivo de Base de Datos
-IS_VERCEL = os.environ.get('VERCEL') is not None
+IS_VERCEL = os.environ.get('VERCEL') is not None or os.environ.get('VERCEL_URL') is not None
 DB_FILE = os.environ.get('DB_FILE', '/tmp/restaurant_db.json' if IS_VERCEL else 'restaurant_db.json')
 ADMIN_PASSWORD = '1234'  # Contraseña del admin
 UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/comprobantes_yape' if IS_VERCEL else 'comprobantes_yape')
