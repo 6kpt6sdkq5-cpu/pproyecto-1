@@ -7,3 +7,14 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     autoDeploy: true
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SECRET_KEY
+        value: change_me_in_production
+      - key: DB_FILE
+        value: /data/restaurant_db.json
+      - key: UPLOAD_FOLDER
+        value: /data/comprobantes_yape
