@@ -4,5 +4,13 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "restaurant_app/app.py" }
-  ]
+  ],
+  "functions": {
+    "restaurant_app/app.py": {
+      "includeFiles": [
+        "restaurant_app/templates/**",
+        "restaurant_app/static/**"
+      ]
+    }
+  }
 }
