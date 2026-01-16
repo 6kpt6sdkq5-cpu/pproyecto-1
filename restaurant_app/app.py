@@ -102,8 +102,11 @@ def allowed_file(filename):
 
 @app.route('/')
 def index():
-    db = load_db()
-    return render_template('index.html', menu=db.get('menu', {}))
+    try:
+        db = load_db()
+        return render_template('index.html', menu=db.get('menu', {}))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/health')
 def health():
