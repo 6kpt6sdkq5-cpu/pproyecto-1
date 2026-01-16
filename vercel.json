@@ -9,7 +9,8 @@
     "restaurant_app/app.py": {
       "includeFiles": [
         "restaurant_app/templates/**",
-        "restaurant_app/static/**"
+        "restaurant_app/static/**",
+        "restaurant_app/banco_integration.py"
       ]
     }
   }
