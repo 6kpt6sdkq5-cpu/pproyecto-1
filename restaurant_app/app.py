@@ -59,9 +59,10 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'restaurante-secret-key-2024')
 
 # Archivo de Base de Datos
-DB_FILE = os.environ.get('DB_FILE', 'restaurant_db.json')
+IS_VERCEL = os.environ.get('VERCEL') is not None
+DB_FILE = os.environ.get('DB_FILE', '/tmp/restaurant_db.json' if IS_VERCEL else 'restaurant_db.json')
 ADMIN_PASSWORD = '1234'  # Contraseña del admin
-UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'comprobantes_yape')
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/comprobantes_yape' if IS_VERCEL else 'comprobantes_yape')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 # Crear carpeta de comprobantes si no existe

@@ -91,3 +91,14 @@ restaurant_app/
    - `rootDir`: `restaurant_app`
    - Build: `pip install -r requirements.txt`
    - Start: `gunicorn app:app`
+
+## Despliegue en Vercel (serverless, sin disco persistente)
+
+1. Importar el repositorio en Vercel
+2. Vercel detecta Python con `@vercel/python` usando `vercel.json`
+3. Limitaciones: no hay disco persistente; se usa `/tmp` en tiempo de ejecución
+4. Variables de entorno (opcionales):
+   - `SECRET_KEY`
+   - `DB_FILE` (por defecto `/tmp/restaurant_db.json`)
+   - `UPLOAD_FOLDER` (por defecto `/tmp/comprobantes_yape`)
+5. Para persistencia real, usa Render con disco `/data`
